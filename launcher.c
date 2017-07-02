@@ -25,6 +25,7 @@ void launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sym
     }
     
     if (sym_file) {
+        sleep(1000); // FIXME: Find a way to find out when QEMU has started.. this is going to kill throughput.
         load_symbols(sym_file);
     }
 }
@@ -40,15 +41,7 @@ void launch_virtual_stm32(char * qemu_executable, char * bin_file, char * elf_fi
     char * basename_pos = elf_file + strlen(elf_file);
     while ((basename_pos > elf_file) && (*basename_pos != '/')) basename_pos--;
     
-    // sym_file = "/tmp/" ++ basename(elf_file) ++ ".sym"
-    int index = 0;
-    char * ptr = path;
-    while (*ptr) sym_file[index++] = *(ptr++);
-    ptr = basename_pos;
-    while (*ptr) sym_file[index++] = *(ptr++);
-    ptr = ext;
-    while (*ptr) sym_file[index++] = *(ptr++);
-    sym_file[index] = '\0';
+    sprintf(sym_file, "%s%s%s", path, basename_pos, ext);
     
     int pid = fork();
     if (pid < 0) {
