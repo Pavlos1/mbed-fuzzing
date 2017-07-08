@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -45,19 +46,13 @@ int gdb_connect() {
     return sockfd;
 }
 
+
 /**
- * Loads debug symbols into GDB
+ * Computes checksum and sends MI command over TCP
  */
-void load_symbols(char * sym_file) {
-    // FIXME: This method doesn't work, for some reason
-    int sockfd = gdb_connect();
-    
-    char * base = "symbol-file ";
-    char * payload = malloc(strlen(base) + strlen(sym_file) + 1);
-    sprintf(payload, "%s%s", base, sym_file);
-    
+bool gdb_send_rsp_packet(int sockfd, char * command) {
     int checksum = 0;
-    for (int i=0; i<strlen(payload); i++) checksum = (checksum + payload[i]) & 0xff;
+    for (int i=0; i<strlen(command); i++) checksum = (checksum + command[i]) & 0xff;
     
     char low_check, high_check;
     
@@ -69,12 +64,38 @@ void load_symbols(char * sym_file) {
     if (_high_check < 10) high_check = '0' + _high_check;
     else high_check = 'a' + (_high_check - 10);
     
-    char * command = malloc(strlen(payload) + 7);
-    sprintf(command, "$%s#%c%c\r\n", payload, high_check, low_check);
+    char * payload = malloc(strlen(command) + 7);
+    sprintf(payload, "$%s#%c%c\r\n", command, high_check, low_check);
     
-    if (write(sockfd, command, strlen(command)) < 0) {
+    bool res = write(sockfd, payload, strlen(command)) >= 0;
+    free(payload);
+    return res;
+}
+
+/**
+ * Loads debug symbols into GDB
+ */
+void gdb_load_symbols(char * sym_file) {
+    // FIXME: This method doesn't work, for some reason
+    int sockfd = gdb_connect();
+    
+    char * base = "symbol-file ";
+    char * command = malloc(strlen(base) + strlen(sym_file) + 1);
+    sprintf(command, "%s%s", base, sym_file);
+    
+    if (!gdb_send_rsp_packet(sockfd, command)) {
         fprintf(stderr, "WARNING: failed to load symbol file\n");
     }
     
+    free(command);
+    close(sockfd);
+}
+
+/**
+ * Does what it says on the tin
+ */
+void gdb_enter_extended_mode() {
+    int sockfd = gdb_connect();
+    gdb_send_rsp_packet(sockfd, "!");
     close(sockfd);
 }

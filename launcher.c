@@ -26,7 +26,8 @@ void launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sym
     
     if (sym_file) {
         sleep(1000); // FIXME: Find a way to find out when QEMU has started.. this is going to kill throughput.
-        load_symbols(sym_file);
+        gdb_enter_extended_mode();
+        gdb_load_symbols(sym_file);
     }
 }
 
@@ -67,4 +68,5 @@ void launch_virtual_stm32(char * qemu_executable, char * bin_file, char * elf_fi
     }
     
     launch_virtual_stm32_ex(qemu_executable, bin_file, sym_file);
+    free(sym_file);
 }
