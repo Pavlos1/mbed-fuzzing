@@ -65,6 +65,10 @@ bool gdb_send_rsp_packet(int sockfd, char * command) {
     else high_check = 'a' + (_high_check - 10);
     
     char * payload = malloc(strlen(command) + 7);
+    if (!payload) {
+        fprintf(stderr, "Memory alloction failed\n");
+        exit(1);
+    }
     sprintf(payload, "$%s#%c%c\r\n", command, high_check, low_check);
     
     bool res = write(sockfd, payload, strlen(command)) >= 0;
@@ -81,6 +85,10 @@ void gdb_load_symbols(char * sym_file) {
     
     char * base = "symbol-file ";
     char * command = malloc(strlen(base) + strlen(sym_file) + 1);
+    if (!command) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(1);
+    }
     sprintf(command, "%s%s", base, sym_file);
     
     if (!gdb_send_rsp_packet(sockfd, command)) {

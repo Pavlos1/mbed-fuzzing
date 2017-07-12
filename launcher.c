@@ -38,6 +38,10 @@ void launch_virtual_stm32(char * qemu_executable, char * bin_file, char * elf_fi
     char * path = "/tmp/";
     char * ext = ".sym";
     char * sym_file = malloc(strlen(elf_file) + strlen(path) + strlen(ext) + 1);
+    if (!sym_file) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(1);
+    }
     
     char * basename_pos = elf_file + strlen(elf_file);
     while ((basename_pos > elf_file) && (*basename_pos != '/')) basename_pos--;
