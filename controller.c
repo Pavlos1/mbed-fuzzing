@@ -1,56 +1,17 @@
-#include "controller.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
 
-
-/**
- * Connects to remote GDB server
- *
- * See: www.linuxhowtos.org/C_C++/socket.htm
- */
-int gdb_connect() {
-    int sockfd, portno, n;
-    struct sockaddr_in serv_addr;
-    struct hostent * server;
-
-    portno = 1234;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        fprintf(stderr, "Failed to open socket while communicating with GDB server\n");
-        exit(1);
-    }
-    server = gethostbyname("localhost");
-    if (!server) {
-        fprintf(stderr, "Failed to resolve host while communicating with GDB server\n");
-        exit(1);
-    }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-         (char *)&serv_addr.sin_addr.s_addr,
-         server->h_length);
-    serv_addr.sin_port = htons(portno);
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-        fprintf(stderr, "Failed to connect while communicating with GDB server\n");
-        exit(1);
-    }
-    
-    return sockfd;
-}
-
+#include "controller.h"
+#include "launcher.h"
 
 /**
- * Computes checksum and sends MI command over TCP
+ * Computes checksum and sends MI command
  */
-bool gdb_send_rsp_packet(int sockfd, char * command) {
+char * gdb_transceive_rsp_packet(int * fds, char * command) {
     int checksum = 0;
     for (int i=0; i<strlen(command); i++) checksum = (checksum + command[i]) & 0xff;
     
@@ -71,18 +32,42 @@ bool gdb_send_rsp_packet(int sockfd, char * command) {
     }
     sprintf(payload, "$%s#%c%c\r\n", command, high_check, low_check);
     
-    bool res = write(sockfd, payload, strlen(command)) >= 0;
+    bool res = write(fds[PIPE_STDIN], payload, strlen(payload)) >= 0;
     free(payload);
-    return res;
+    if (!res) return (char *) 0;
+    
+    return gdb_read(fds[PIPE_STDOUT]);
 }
+
+
+/**
+ * Reads and parses as RSP packet from GDB
+ *
+ * TODO: Implement
+ */
+char * gdb_read(int fd) {
+    char * ret = malloc(strlen("placeholder") + 1);
+    strcpy(ret, "placeholder");
+    return ret;
+}
+
+
+/**
+ * For MI commands expecting no result
+ */
+bool gdb_send_rsp_packet(int * fds, char * command) {
+    char * res = gdb_transceive_rsp_packet(fds, command);
+    bool ret = res != (char *) 0;
+    free(res);
+    
+    return ret;
+}
+
 
 /**
  * Loads debug symbols into GDB
  */
-void gdb_load_symbols(char * sym_file) {
-    // FIXME: This method doesn't work, for some reason
-    int sockfd = gdb_connect();
-    
+void gdb_load_symbols(int * fds, char * sym_file) {
     char * base = "symbol-file ";
     char * command = malloc(strlen(base) + strlen(sym_file) + 1);
     if (!command) {
@@ -91,19 +76,10 @@ void gdb_load_symbols(char * sym_file) {
     }
     sprintf(command, "%s%s", base, sym_file);
     
-    if (!gdb_send_rsp_packet(sockfd, command)) {
+    if (!gdb_send_rsp_packet(fds, command)) {
         fprintf(stderr, "WARNING: failed to load symbol file\n");
     }
     
     free(command);
-    close(sockfd);
 }
 
-/**
- * Does what it says on the tin
- */
-void gdb_enter_extended_mode() {
-    int sockfd = gdb_connect();
-    gdb_send_rsp_packet(sockfd, "!");
-    close(sockfd);
-}

@@ -3,9 +3,9 @@
 
 #include <stdbool.h>
 
-int  gdb_connect();
-bool gdb_send_rsp_packet(int sockfd, char * command);
-void gdb_load_symbols(char * sym_file);
-void gdb_enter_extended_mode();
+char * gdb_transceive_rsp_packet(int * fds, char * command);
+char * gdb_read(int fd);
+bool gdb_send_rsp_packet(int * fds, char * command);
+void gdb_load_symbols(int * fds, char * sym_file);
 
 #endif
