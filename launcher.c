@@ -57,7 +57,7 @@ int * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sy
             "-kernel", bin_file,                      // ^ data initially loaded into flash
             "-machine", "stm32-p103",                 // ^ at present, the only available STM32 board
             "-S",                                     // ^ pause the VM before execution
-            "-gdb", "stdio",                         // ^ create GDB server, connect via pipe
+            "-gdb", "stdio",                          // ^ create GDB server, connect via pipe
             (char *) 0);
             
         // if `exec` returns, something went wrong

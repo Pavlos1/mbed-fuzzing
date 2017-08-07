@@ -8,6 +8,20 @@
 #include "controller.h"
 #include "launcher.h"
 
+
+/**
+ * Does what it says on the tin
+ *
+ * Returns -1 on failure
+ */
+inline int from_hex_digit(char digit) {
+	if ((digit >= 'A') && (digit <= 'F')) return digit - 'A' + 0xA;
+	else if ((digit >= 'a') && (digit <= 'f')) return digit - 'a' + 0xA;
+	else if ((digit >= '0') && (digit <= '9')) return digit - '0';
+	else return -1;
+}
+
+
 /**
  * Computes checksum and sends MI command
  */
@@ -21,16 +35,16 @@ char * gdb_transceive_rsp_packet(int * fds, char * command) {
     if (_low_check < 10) low_check = '0' + _low_check;
     else low_check = 'a' + (_low_check - 10);
     
-    int _high_check = (checksum >> 8) & 0xf;
+    int _high_check = (checksum >> 4) & 0xf;
     if (_high_check < 10) high_check = '0' + _high_check;
     else high_check = 'a' + (_high_check - 10);
     
-    char * payload = malloc(strlen(command) + 7);
+    char * payload = malloc(strlen(command) + 6);
     if (!payload) {
         fprintf(stderr, "Memory alloction failed\n");
         exit(1);
     }
-    sprintf(payload, "$%s#%c%c\r\n", command, high_check, low_check);
+    sprintf(payload, "$%s#%c%c\n", command, high_check, low_check);
     
     bool res = write(fds[PIPE_STDIN], payload, strlen(payload)) >= 0;
     free(payload);
@@ -42,13 +56,57 @@ char * gdb_transceive_rsp_packet(int * fds, char * command) {
 
 /**
  * Reads and parses as RSP packet from GDB
- *
- * TODO: Implement
  */
 char * gdb_read(int fd) {
-    char * ret = malloc(strlen("placeholder") + 1);
-    strcpy(ret, "placeholder");
-    return ret;
+    char * buf = malloc(1024);
+    if (!buf) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(1);
+    }
+    
+    int size = read(fd, buf, 1024);
+    if ((size < 5) || (buf[0] != '+') || (buf[1] != '$')) {
+        free(buf);
+        return (char *) 0;
+    }
+    
+    int checksum = 0, checksum_assert = 0, i = 2;
+    bool ok = false;
+    for (int i=2; i < size - 2; i++) {
+        if (i == '#') {
+            ok = true;
+            buf[i++] = '\0';
+            
+            char checksum_assert_high = from_hex_digit(buf[i++]);
+            char checksum_assert_low = from_hex_digit(buf[i++]);
+            if ((checksum_assert_low < 0) || (checksum_assert_high < 0)) {
+            	free(buf);
+            	return (char *) 0;
+            }
+            
+            checksum_assert += checksum_assert_low;
+            checksum_assert += checksum_assert_high << 4;
+            
+            if (checksum != (checksum_assert & 0xff)) {
+                free(buf);
+                return (char *) 0;
+            }
+            
+            char * ret = malloc(size - 2);
+            if (!ret) {
+                fprintf(stderr, "Memory allocation failed\n");
+                exit(1);
+            }
+            
+            strcpy(ret, buf + 2);
+            free(buf);
+            return buf + 2;
+        }
+        
+        checksum += buf[i];
+    }
+    
+    return (char *) 0;
 }
 
 
@@ -66,6 +124,8 @@ bool gdb_send_rsp_packet(int * fds, char * command) {
 
 /**
  * Loads debug symbols into GDB
+ *
+ * FIXME: Doesn't produce output..
  */
 void gdb_load_symbols(int * fds, char * sym_file) {
     char * base = "symbol-file ";
@@ -76,9 +136,13 @@ void gdb_load_symbols(int * fds, char * sym_file) {
     }
     sprintf(command, "%s%s", base, sym_file);
     
+    printf(gdb_transceive_rsp_packet(fds, command));
+    
+    /*
     if (!gdb_send_rsp_packet(fds, command)) {
         fprintf(stderr, "WARNING: failed to load symbol file\n");
     }
+    */
     
     free(command);
 }
