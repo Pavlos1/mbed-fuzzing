@@ -108,6 +108,7 @@ int * launch_virtual_stm32(char * qemu_executable, char * bin_file, char * elf_f
     
     char * basename_pos = elf_file + strlen(elf_file);
     while ((basename_pos > elf_file) && (*basename_pos != '/')) basename_pos--;
+    basename_pos++;
     
     sprintf(sym_file, "%s%s%s", path, basename_pos, ext);
     
