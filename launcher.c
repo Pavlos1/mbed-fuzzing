@@ -60,7 +60,7 @@ int * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sy
             "-machine", "stm32-p103",                 // ^ at present, the only available STM32 board
             "-S",                                     // ^ pause the VM before execution
             "-gdb", "stdio",                          // ^ create GDB server, connect via pipe
-            (char *) 0);
+            NULL);
             
         // if `exec` returns, something went wrong
         fprintf(stderr, "Failed to exec QEMU\n");
@@ -116,7 +116,7 @@ int * launch_virtual_stm32(char * qemu_executable, char * bin_file, char * elf_f
         fprintf(stderr, "Failed to fork while trying to execute arm-none-eabi-objcopy\n");
         exit(1);
     } else if (pid == 0) {
-        exit(execlp("arm-none-eabi-objcopy", "--only-keep-debug", elf_file, sym_file, (char *) 0));
+        exit(execlp("arm-none-eabi-objcopy", "--only-keep-debug", elf_file, sym_file, NULL));
     }
     
     int status;

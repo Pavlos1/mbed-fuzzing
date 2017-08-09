@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/select.h>
 #include <string.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -46,10 +48,28 @@ char * gdb_transceive_rsp_packet(int * fds, char * command) {
     }
     sprintf(payload, "$%s#%c%c\n", command, high_check, low_check);
     
+    // clear all data from STDOUT
+    // See: https://stackoverflow.com/questions/2917881/how-to-implement-a-timeout-in-read-function-call
+    /*char tmp;
+    fd_set set;
+    FD_ZERO(&set);
+    FD_SET(fds[PIPE_STDOUT], &set);
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 10000;
+    while(select(fds[PIPE_STDOUT], &set, NULL, NULL, &timeout) > 0) {
+        read(fds[PIPE_STDOUT], &tmp, 1);
+        printf("[DEBUG] Discarding character: %d\n", tmp);
+    }*/
+    // XXX: workaround because `select` doesn't do what it should..
+    char * tmp = malloc(1024);
+    read(fds[PIPE_STDOUT], tmp, 1024);
+    free(tmp);
+    
     printf("[DEBUG] Sending RSP packet to GDB: %s\n", payload);
     bool res = write(fds[PIPE_STDIN], payload, strlen(payload)) >= 0;
     free(payload);
-    if (!res) return (char *) 0;
+    if (!res) return NULL;
     
     return gdb_read(fds[PIPE_STDOUT]);
 }
@@ -65,12 +85,14 @@ char * gdb_read(int fd) {
         exit(1);
     }
     
+    // block until data is available
     int size = read(fd, buf, 1024);
+    
     if ((size < 5) || (buf[0] != '+') || (buf[1] != '$')) {
         printf("[DEBUG] Bad RSP backet or transmission error\n");
         printf("[DEBUG] Got response: %s\n", buf);
         free(buf);
-        return (char *) 0;
+        return NULL;
     }
     
     int checksum = 0, checksum_assert = 0, i = 2;
@@ -85,7 +107,7 @@ char * gdb_read(int fd) {
             if ((checksum_assert_low < 0) || (checksum_assert_high < 0)) {
                 printf("[DEBUG] Checksum contains invalid characters\n");
             	free(buf);
-            	return (char *) 0;
+            	return NULL;
             }
             
             checksum_assert += checksum_assert_low;
@@ -94,7 +116,7 @@ char * gdb_read(int fd) {
             if (checksum != (checksum_assert & 0xff)) {
                 printf("[DEBUG] Checksum incorrect\n");
                 free(buf);
-                return (char *) 0;
+                return NULL;
             }
             
             char * ret = malloc(size - 2);
@@ -112,7 +134,7 @@ char * gdb_read(int fd) {
         checksum += buf[i];
     }
     
-    return (char *) 0;
+    return NULL;
 }
 
 
@@ -121,7 +143,7 @@ char * gdb_read(int fd) {
  */
 bool gdb_send_rsp_packet(int * fds, char * command) {
     char * res = gdb_transceive_rsp_packet(fds, command);
-    bool ret = res != (char *) 0;
+    bool ret = res != NULL;
     free(res);
     
     return ret;
@@ -130,8 +152,6 @@ bool gdb_send_rsp_packet(int * fds, char * command) {
 
 /**
  * Loads debug symbols into GDB
- *
- * FIXME: Doesn't produce output..
  */
 void gdb_load_symbols(int * fds, char * sym_file) {
     char * base = "symbol-file ";
