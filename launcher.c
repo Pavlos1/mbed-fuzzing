@@ -15,6 +15,8 @@
  * for pipe creation code
  */
 int * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sym_file) {
+    printf("[DEBUG] entering launch_virtual_stm32_ex\n");
+
     int stdinFDs[2];
     int stdoutFDs[2];
     
@@ -78,10 +80,14 @@ int * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sy
     ret[PIPE_STDIN]  = stdinFDs[PIPE_WRITE];
     ret[PIPE_STDOUT] = stdoutFDs[PIPE_READ];
     
+    printf("[DEBUG] loading symbol files...\n");
+    
     // load symbols from file
     if (sym_file) {
         gdb_load_symbols(ret, sym_file);
     }
+    
+    printf("[DEBUG] beep beep I'm a jeep\n");
     
     // return file descriptors
     return ret;

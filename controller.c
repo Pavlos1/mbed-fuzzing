@@ -14,7 +14,7 @@
  *
  * Returns -1 on failure
  */
-inline int from_hex_digit(char digit) {
+int from_hex_digit(char digit) {
 	if ((digit >= 'A') && (digit <= 'F')) return digit - 'A' + 0xA;
 	else if ((digit >= 'a') && (digit <= 'f')) return digit - 'a' + 0xA;
 	else if ((digit >= '0') && (digit <= '9')) return digit - '0';
@@ -46,6 +46,7 @@ char * gdb_transceive_rsp_packet(int * fds, char * command) {
     }
     sprintf(payload, "$%s#%c%c\n", command, high_check, low_check);
     
+    printf("[DEBUG] Sending RSP packet to GDB: %s\n", payload);
     bool res = write(fds[PIPE_STDIN], payload, strlen(payload)) >= 0;
     free(payload);
     if (!res) return (char *) 0;
@@ -66,6 +67,8 @@ char * gdb_read(int fd) {
     
     int size = read(fd, buf, 1024);
     if ((size < 5) || (buf[0] != '+') || (buf[1] != '$')) {
+        printf("[DEBUG] Bad RSP backet or transmission error\n");
+        printf("[DEBUG] Got response: %s\n", buf);
         free(buf);
         return (char *) 0;
     }
@@ -77,9 +80,10 @@ char * gdb_read(int fd) {
             ok = true;
             buf[i++] = '\0';
             
-            char checksum_assert_high = from_hex_digit(buf[i++]);
-            char checksum_assert_low = from_hex_digit(buf[i++]);
+            int checksum_assert_high = from_hex_digit(buf[i++]);
+            int checksum_assert_low = from_hex_digit(buf[i++]);
             if ((checksum_assert_low < 0) || (checksum_assert_high < 0)) {
+                printf("[DEBUG] Checksum contains invalid characters\n");
             	free(buf);
             	return (char *) 0;
             }
@@ -88,6 +92,7 @@ char * gdb_read(int fd) {
             checksum_assert += checksum_assert_high << 4;
             
             if (checksum != (checksum_assert & 0xff)) {
+                printf("[DEBUG] Checksum incorrect\n");
                 free(buf);
                 return (char *) 0;
             }
@@ -100,7 +105,8 @@ char * gdb_read(int fd) {
             
             strcpy(ret, buf + 2);
             free(buf);
-            return buf + 2;
+            printf("[DEBUG] Response read\n");
+            return ret;
         }
         
         checksum += buf[i];
