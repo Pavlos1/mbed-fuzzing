@@ -48,24 +48,6 @@ char * gdb_transceive_rsp_packet(int * fds, char * command) {
     }
     sprintf(payload, "$%s#%c%c\n", command, high_check, low_check);
     
-    // clear all data from STDOUT
-    // See: https://stackoverflow.com/questions/2917881/how-to-implement-a-timeout-in-read-function-call
-    /*char tmp;
-    fd_set set;
-    FD_ZERO(&set);
-    FD_SET(fds[PIPE_STDOUT], &set);
-    struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 10000;
-    while(select(fds[PIPE_STDOUT], &set, NULL, NULL, &timeout) > 0) {
-        read(fds[PIPE_STDOUT], &tmp, 1);
-        printf("[DEBUG] Discarding character: %d\n", tmp);
-    }*/
-    // XXX: workaround because `select` doesn't do what it should..
-    char * tmp = malloc(1024);
-    read(fds[PIPE_STDOUT], tmp, 1024);
-    free(tmp);
-    
     printf("[DEBUG] Sending RSP packet to GDB: %s\n", payload);
     bool res = write(fds[PIPE_STDIN], payload, strlen(payload)) >= 0;
     free(payload);
@@ -79,17 +61,34 @@ char * gdb_transceive_rsp_packet(int * fds, char * command) {
  * Reads and parses as RSP packet from GDB
  */
 char * gdb_read(int fd) {
+    // wait for transmission ACK
+    char tmp;
+    do {
+        read(fd, &tmp, 1);
+        
+        if (tmp == '-') {
+            printf("[DEBUG] GDB requested retransmission\n");
+            return NULL;
+        }
+    } while (tmp != '+');
+    printf("[DEBUG] Got transmission ACK\n");
+
     char * buf = malloc(1024);
     if (!buf) {
         fprintf(stderr, "Memory allocation failed\n");
         exit(1);
     }
     
-    // block until data is available
-    int size = read(fd, buf, 1024);
+    // wait for start of message
+    do read(fd, &tmp, 1); while (tmp != '$');
+    printf("[DEBUG] Starting message read...\n");
     
-    if ((size < 5) || (buf[0] != '+') || (buf[1] != '$')) {
-        printf("[DEBUG] Bad RSP backet or transmission error\n");
+    // and read the rest of the packet
+    int size = read(fd, buf, 1024);
+    printf("[DEBUG] Candidate message read\n");
+    
+    if (size < 4) {
+        printf("[DEBUG] RSP packet too short\n");
         printf("[DEBUG] Got response: %s\n", buf);
         free(buf);
         return NULL;
@@ -97,7 +96,7 @@ char * gdb_read(int fd) {
     
     int checksum = 0, checksum_assert = 0, i = 2;
     bool ok = false;
-    for (int i=2; i < size - 2; i++) {
+    for (int i=0; i < size - 2; i++) {
         if (i == '#') {
             ok = true;
             buf[i++] = '\0';
@@ -119,16 +118,7 @@ char * gdb_read(int fd) {
                 return NULL;
             }
             
-            char * ret = malloc(size - 2);
-            if (!ret) {
-                fprintf(stderr, "Memory allocation failed\n");
-                exit(1);
-            }
-            
-            strcpy(ret, buf + 2);
-            free(buf);
-            printf("[DEBUG] Response read\n");
-            return ret;
+            return buf;
         }
         
         checksum += buf[i];
