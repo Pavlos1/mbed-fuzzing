@@ -80,26 +80,30 @@ char * gdb_read(int fd) {
     }
     
     // wait for start of message
-    do read(fd, &tmp, 1); while (tmp != '$');
+    do {
+        read(fd, &tmp, 1);
+        printf("[DEBUG] Dropping character: %c\n", tmp);
+    } while (tmp != '$');
     printf("[DEBUG] Starting message read...\n");
     
     // and read the rest of the packet
-    int size = read(fd, buf, 1024);
-    printf("[DEBUG] Candidate message read\n");
+    int size = read(fd, buf, 1023);
+    buf[1023] = '\0';
+    printf("[DEBUG] Candidate message read: %s\n", buf);
     
-    if (size < 4) {
+    if (size < 3) {
         printf("[DEBUG] RSP packet too short\n");
         printf("[DEBUG] Got response: %s\n", buf);
         free(buf);
         return NULL;
     }
     
-    int checksum = 0, checksum_assert = 0, i = 2;
-    bool ok = false;
+    int checksum = 0, checksum_assert = 0;
     for (int i=0; i < size - 2; i++) {
-        if (i == '#') {
-            ok = true;
+        if (buf[i] == '#') {
+            printf("[DEBUG] Found termination character\n");
             buf[i++] = '\0';
+            checksum &= 0xff;
             
             int checksum_assert_high = from_hex_digit(buf[i++]);
             int checksum_assert_low = from_hex_digit(buf[i++]);
@@ -112,8 +116,10 @@ char * gdb_read(int fd) {
             checksum_assert += checksum_assert_low;
             checksum_assert += checksum_assert_high << 4;
             
-            if (checksum != (checksum_assert & 0xff)) {
+            if (checksum != checksum_assert) {
                 printf("[DEBUG] Checksum incorrect\n");
+                printf("[DEBUG] Expecting: %d\n", checksum);
+                printf("[DEBUG] Actual: %d\n", checksum_assert);
                 free(buf);
                 return NULL;
             }
@@ -124,6 +130,8 @@ char * gdb_read(int fd) {
         checksum += buf[i];
     }
     
+    printf("[DEBUG] Message never terminated\n");
+    free(buf);
     return NULL;
 }
 
@@ -152,13 +160,14 @@ void gdb_load_symbols(int * fds, char * sym_file) {
     }
     sprintf(command, "%s%s", base, sym_file);
     
-    printf(gdb_transceive_rsp_packet(fds, command));
-    
-    /*
-    if (!gdb_send_rsp_packet(fds, command)) {
-        fprintf(stderr, "WARNING: failed to load symbol file\n");
+    char * res = gdb_transceive_rsp_packet(fds, command);
+    if (!res) {
+        printf("[WARN] No ACK for loaded symbols\n");
+        return;
     }
-    */
+    
+    printf("[DEBUG] Symbol loading returned: %s\n", res);
+    free(res);
     
     free(command);
 }

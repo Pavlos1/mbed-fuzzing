@@ -22,30 +22,30 @@ int * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sy
     
     // set up pipes for communicating with GDB
     if (pipe(stdinFDs) < 0) {
-        fprintf(stderr, "Failed to set up pipes while launching QEMU\n");
+        fprintf(stderr, "[FATAL] Failed to set up pipes while launching QEMU\n");
         exit(1);
     }
     if (pipe(stdoutFDs) < 0) {
         close(stdinFDs[PIPE_READ]);
         close(stdoutFDs[PIPE_WRITE]);
-        fprintf(stderr, "Failed to set up pipes while launching QEMU\n");
+        fprintf(stderr, "[FATAL] Failed to set up pipes while launching QEMU\n");
         exit(1);
     }
 
     int pid = fork();
     if (pid < 0) {
-        fprintf(stderr, "Failed to fork while trying to execute QEMU\n");
+        fprintf(stderr, "[FATAL] Failed to fork while trying to execute QEMU\n");
         exit(1);
     } else if (pid == 0) {
         // redirect stdin
         if (dup2(stdinFDs[PIPE_READ], STDIN_FILENO) == -1) {
-            fprintf(stderr, "Failed to set up pipes while launching QEMU\n");
+            fprintf(stderr, "[FATAL] Failed to set up pipes while launching QEMU\n");
             exit(1);
         }
 
         // redirect stdout
         if (dup2(stdoutFDs[PIPE_WRITE], STDOUT_FILENO) == -1) {
-            fprintf(stderr, "Failed to set up pipes while launching QEMU\n");
+            fprintf(stderr, "[FATAL] Failed to set up pipes while launching QEMU\n");
             exit(1);
         }
         
@@ -63,7 +63,7 @@ int * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sy
             NULL);
             
         // if `exec` returns, something went wrong
-        fprintf(stderr, "Failed to exec QEMU\n");
+        fprintf(stderr, "[FATAL] Failed to exec QEMU\n");
         exit(1);
     }
     
@@ -74,7 +74,7 @@ int * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sy
     // set up file descriptors to be returned
     int * ret = malloc(2 * sizeof(int));
     if (!ret) {
-        fprintf(stderr, "Failed to allocate memory\n");
+        fprintf(stderr, "[FATAL] Failed to allocate memory\n");
         exit(1);
     }
     ret[PIPE_STDIN]  = stdinFDs[PIPE_WRITE];
@@ -82,12 +82,13 @@ int * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sy
     
     printf("[DEBUG] loading symbol files...\n");
     
+    // XXX workaround
+    gdb_send_rsp_packet(ret, "");
+    
     // load symbols from file
     if (sym_file) {
         gdb_load_symbols(ret, sym_file);
     }
-    
-    printf("[DEBUG] beep beep I'm a jeep\n");
     
     // return file descriptors
     return ret;
@@ -102,7 +103,7 @@ int * launch_virtual_stm32(char * qemu_executable, char * bin_file, char * elf_f
     char * ext = ".sym";
     char * sym_file = malloc(strlen(elf_file) + strlen(path) + strlen(ext) + 1);
     if (!sym_file) {
-        fprintf(stderr, "Memory allocation failed\n");
+        fprintf(stderr, "[FATAL] Memory allocation failed\n");
         exit(1);
     }
     
@@ -114,7 +115,7 @@ int * launch_virtual_stm32(char * qemu_executable, char * bin_file, char * elf_f
     
     int pid = fork();
     if (pid < 0) {
-        fprintf(stderr, "Failed to fork while trying to execute arm-none-eabi-objcopy\n");
+        fprintf(stderr, "[FATAL] Failed to fork while trying to execute arm-none-eabi-objcopy\n");
         exit(1);
     } else if (pid == 0) {
         exit(execlp("arm-none-eabi-objcopy", "--only-keep-debug", elf_file, sym_file, NULL));
@@ -122,11 +123,11 @@ int * launch_virtual_stm32(char * qemu_executable, char * bin_file, char * elf_f
     
     int status;
     if(waitpid(pid, &status, 0) < 0) {
-        fprintf(stderr, "Error in waitpid() while trying to execute arm-none-eabi-objcopy\n");
+        fprintf(stderr, "[FATAL] Error in waitpid() while trying to execute arm-none-eabi-objcopy\n");
         exit(1);
     }
     if (!WIFEXITED(status)) {
-        fprintf(stderr, "Child process never exited (this should never happen?) while trying"
+        fprintf(stderr, "[FATAL] Child process never exited (this should never happen?) while trying"
             " to execute arm-none-eabi-objcopy\n");
         exit(1);
     }
