@@ -5,7 +5,6 @@
 #include <sys/wait.h>
 
 #include "launcher.h"
-#include "controller.h"
 
 
 /**
@@ -72,11 +71,7 @@ ExecStatus * launch_virtual_stm32(char * qemu_executable, char * bin_file, char 
     close(stdoutFDs[PIPE_WRITE]);
     
     // set up file descriptors to be returned
-    ExecStatus * ret = malloc(sizeof(ExecStatus));
-    if (!ret) {
-        fprintf(stderr, "[FATAL] Failed to allocate memory\n");
-        exit(1);
-    }
+    ExecStatus * ret = safe_malloc(sizeof(ExecStatus));
     ret->fd_stdin  = stdinFDs[PIPE_WRITE];
     ret->fd_stdout = stdoutFDs[PIPE_READ];
     

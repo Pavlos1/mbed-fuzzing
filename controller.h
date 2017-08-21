@@ -9,6 +9,9 @@ typedef struct {
     
 } ExecStatus;
 
+#include "util.h"
+#include "launcher.h"
+
 char * gdb_transceive_rsp_packet(ExecStatus * stat, char * command);
 char * gdb_read(int fd);
 bool gdb_send_rsp_packet(ExecStatus * stat, char * command);

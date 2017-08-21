@@ -1,14 +1,15 @@
 CC := gcc
 CFLAGS := ""
+BASE_TARGETS := launcher.o controller.o util.o
 
 default: all
 
 test: all test.o
-	$(CC) controller.o launcher.o test.o -o $@
+	$(CC) $(BASE_TARGETS) test.o -o $@
 	./$@
 	
 
-all: launcher.o controller.o
+all: $(BASE_TARGETS)
 
 %.o: %.c
 	$(CC) -c $(CLAGS) -o $@ $<

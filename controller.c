@@ -8,20 +8,6 @@
 #include <sys/types.h>
 
 #include "controller.h"
-#include "launcher.h"
-
-
-/**
- * Does what it says on the tin
- *
- * Returns -1 on failure
- */
-unsigned int from_hex_digit(char digit) {
-	if ((digit >= 'A') && (digit <= 'F')) return digit - 'A' + 0xA;
-	else if ((digit >= 'a') && (digit <= 'f')) return digit - 'a' + 0xA;
-	else if ((digit >= '0') && (digit <= '9')) return digit - '0';
-	else return -1;
-}
 
 
 /**
@@ -41,11 +27,7 @@ char * gdb_transceive_rsp_packet(ExecStatus * stat, char * command) {
     if (_high_check < 10) high_check = '0' + _high_check;
     else high_check = 'a' + (_high_check - 10);
     
-    char * payload = malloc(strlen(command) + 6);
-    if (!payload) {
-        fprintf(stderr, "Memory alloction failed\n");
-        exit(1);
-    }
+    char * payload = safe_malloc(strlen(command) + 6);
     sprintf(payload, "$%s#%c%c\n", command, high_check, low_check);
     
     printf("[DEBUG] Sending RSP packet to GDB: %s\n", payload);
@@ -73,11 +55,7 @@ char * gdb_read(int fd) {
     } while (tmp != '+');
     printf("[DEBUG] Got transmission ACK\n");
 
-    char * buf = malloc(1024);
-    if (!buf) {
-        fprintf(stderr, "Memory allocation failed\n");
-        exit(1);
-    }
+    char * buf = safe_malloc(1024);
     
     // wait for start of message
     do {
