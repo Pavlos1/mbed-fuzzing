@@ -4,10 +4,8 @@
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
-#define PIPE_STDIN 0
-#define PIPE_STDOUT 1
+#include "controller.h"
 
-int * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, char * sym_file);
-int * launch_virtual_stm32(char * qemu_executable, char * bin_file, char * elf_file);
+ExecStatus * launch_virtual_stm32(char * qemu_executable, char * bin_file, char * sym_file);
 
 #endif

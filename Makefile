@@ -5,6 +5,7 @@ default: all
 
 test: all test.o
 	$(CC) controller.o launcher.o test.o -o $@
+	./$@
 	
 
 all: launcher.o controller.o

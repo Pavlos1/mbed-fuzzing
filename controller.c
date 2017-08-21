@@ -16,7 +16,7 @@
  *
  * Returns -1 on failure
  */
-int from_hex_digit(char digit) {
+unsigned int from_hex_digit(char digit) {
 	if ((digit >= 'A') && (digit <= 'F')) return digit - 'A' + 0xA;
 	else if ((digit >= 'a') && (digit <= 'f')) return digit - 'a' + 0xA;
 	else if ((digit >= '0') && (digit <= '9')) return digit - '0';
@@ -27,17 +27,17 @@ int from_hex_digit(char digit) {
 /**
  * Computes checksum and sends MI command
  */
-char * gdb_transceive_rsp_packet(int * fds, char * command) {
-    int checksum = 0;
-    for (int i=0; i<strlen(command); i++) checksum = (checksum + command[i]) & 0xff;
+char * gdb_transceive_rsp_packet(ExecStatus * stat, char * command) {
+    unsigned int checksum = 0;
+    for (unsigned int i=0; i<strlen(command); i++) checksum = (checksum + command[i]) & 0xff;
     
     char low_check, high_check;
     
-    int _low_check = checksum & 0xf;
+    unsigned int _low_check = checksum & 0xf;
     if (_low_check < 10) low_check = '0' + _low_check;
     else low_check = 'a' + (_low_check - 10);
     
-    int _high_check = (checksum >> 4) & 0xf;
+    unsigned int _high_check = (checksum >> 4) & 0xf;
     if (_high_check < 10) high_check = '0' + _high_check;
     else high_check = 'a' + (_high_check - 10);
     
@@ -49,11 +49,11 @@ char * gdb_transceive_rsp_packet(int * fds, char * command) {
     sprintf(payload, "$%s#%c%c\n", command, high_check, low_check);
     
     printf("[DEBUG] Sending RSP packet to GDB: %s\n", payload);
-    bool res = write(fds[PIPE_STDIN], payload, strlen(payload)) >= 0;
+    bool res = write(stat->fd_stdin, payload, strlen(payload)) >= 0;
     free(payload);
     if (!res) return NULL;
     
-    return gdb_read(fds[PIPE_STDOUT]);
+    return gdb_read(stat->fd_stdout);
 }
 
 
@@ -87,7 +87,7 @@ char * gdb_read(int fd) {
     printf("[DEBUG] Starting message read...\n");
     
     // and read the rest of the packet
-    int size = read(fd, buf, 1023);
+    unsigned int size = read(fd, buf, 1023);
     buf[1023] = '\0';
     printf("[DEBUG] Candidate message read: %s\n", buf);
     
@@ -98,15 +98,24 @@ char * gdb_read(int fd) {
         return NULL;
     }
     
-    int checksum = 0, checksum_assert = 0;
-    for (int i=0; i < size - 2; i++) {
+    unsigned int checksum = 0, checksum_assert = 0;
+    for (unsigned int i=0; i < size - 2; i++) {
         if (buf[i] == '#') {
             printf("[DEBUG] Found termination character\n");
+            
+            if (i == 0) {
+                printf("[WARN] Unsupported command\n");
+                free(buf);
+                return NULL;
+            }
+            
+            unsigned int msg_size = i;
+            
             buf[i++] = '\0';
             checksum &= 0xff;
             
-            int checksum_assert_high = from_hex_digit(buf[i++]);
-            int checksum_assert_low = from_hex_digit(buf[i++]);
+            unsigned int checksum_assert_high = from_hex_digit(buf[i++]);
+            unsigned int checksum_assert_low = from_hex_digit(buf[i++]);
             if ((checksum_assert_low < 0) || (checksum_assert_high < 0)) {
                 printf("[DEBUG] Checksum contains invalid characters\n");
             	free(buf);
@@ -124,7 +133,12 @@ char * gdb_read(int fd) {
                 return NULL;
             }
             
-            return buf;
+            char * buf_realloc = realloc(buf, msg_size);
+            if (buf_realloc != buf) {
+                printf("[FATAL] Memory re-allocation failed\n");
+                exit(1);
+            }
+            return buf_realloc;
         }
         
         checksum += buf[i];
@@ -139,8 +153,8 @@ char * gdb_read(int fd) {
 /**
  * For MI commands expecting no result
  */
-bool gdb_send_rsp_packet(int * fds, char * command) {
-    char * res = gdb_transceive_rsp_packet(fds, command);
+bool gdb_send_rsp_packet(ExecStatus * stat, char * command) {
+    char * res = gdb_transceive_rsp_packet(stat, command);
     bool ret = res != NULL;
     free(res);
     
@@ -149,26 +163,14 @@ bool gdb_send_rsp_packet(int * fds, char * command) {
 
 
 /**
- * Loads debug symbols into GDB
+ * Sets a breakpoint at requested label resumes execution
+ * until breakpoint is hit. Breakpoints created this way
+ * do not persist, though they may clobber already existing
+ * ones.
+ *
+ * TODO: Implement
  */
-void gdb_load_symbols(int * fds, char * sym_file) {
-    char * base = "symbol-file ";
-    char * command = malloc(strlen(base) + strlen(sym_file) + 1);
-    if (!command) {
-        fprintf(stderr, "Memory allocation failed\n");
-        exit(1);
-    }
-    sprintf(command, "%s%s", base, sym_file);
-    
-    char * res = gdb_transceive_rsp_packet(fds, command);
-    if (!res) {
-        printf("[WARN] No ACK for loaded symbols\n");
-        return;
-    }
-    
-    printf("[DEBUG] Symbol loading returned: %s\n", res);
-    free(res);
-    
-    free(command);
+char * gdb_ffwd_to_label(ExecStatus * stat, char * label) {
+    return '\0';
 }
 
