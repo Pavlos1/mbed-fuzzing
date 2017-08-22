@@ -133,7 +133,7 @@ char * gdb_read(int fd) {
  */
 bool gdb_send_rsp_packet(ExecStatus * stat, char * command) {
     char * res = gdb_transceive_rsp_packet(stat, command);
-    bool ret = res != NULL;
+    bool ret = (res != NULL);
     free(res);
     
     return ret;
@@ -150,5 +150,64 @@ bool gdb_send_rsp_packet(ExecStatus * stat, char * command) {
  */
 char * gdb_ffwd_to_label(ExecStatus * stat, char * label) {
     return '\0';
+}
+
+
+/**
+ * Obtains real register values from hardware and
+ * overwrites the local record.
+ *
+ * TODO: VFP registers?
+ */
+void gdb_read_registers(ExecStatus * stat) {
+    char * real_regs = gdb_transceive_rsp_packet(stat, "g");
+    if (!real_regs || (real_regs[0] == 'E') || (strlen(real_regs) < (N_REGS << 3))) {
+        printf("[FATAL] Register read failed\n");
+        exit(1);
+    }
+    
+    for (int reg=0; reg < N_REGS; reg++) {
+        uint32_t val=0;
+        for (int byte=0; byte<4; byte++) {
+            val += from_hex_digit(real_regs[(reg << 3) + (byte << 1)]) << ((byte << 3) + 4);
+            val += from_hex_digit(real_regs[(reg << 3) + (byte << 1) + 1]) << (byte << 3);
+        }
+        stat->regs[reg] = val;
+    }
+    
+    //free(real_regs);
+}
+
+
+/**
+ * Writes out the local register modifications to
+ * hardware.
+ *
+ * TODO: VFP registers?
+ */
+void gdb_write_registers(ExecStatus * stat) {
+    char * out = safe_malloc((N_REGS << 3) + 3);
+    int i=0;
+    out[i++] = 'G';
+    out[i++] = ' ';
+    
+    for (int reg=0; reg < N_REGS; reg++) {
+        for (int byte=0; byte<4; byte++) {
+            uint32_t byteVal = (stat->regs[reg] & (0xff << (byte << 3))) >> (byte << 3);
+            int high = byteVal >> 4;
+            int low  = byteVal & 0xf;
+            out[i++] = high < 10 ? high + '0' : (high - 0xa) + 'a';
+            out[i++] = low  < 10 ? low  + '0' : (low  - 0xa) + 'a';
+        }
+    }
+    out[i++] = '\0';
+    
+    char * ret = gdb_transceive_rsp_packet(stat, out);
+    if (!ret || (ret[0] == 'E')) {
+        printf("[FATAL] Register write failed\n");
+        exit(1);
+    }
+    
+    free(out);
 }
 
