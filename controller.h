@@ -19,6 +19,8 @@ typedef struct {
     
     // 16 general (rN) regs + xPSR
     uint32_t regs[17];
+    // bitfield
+    uint64_t regs_avail;
     
 } ExecStatus;
 
@@ -26,7 +28,7 @@ typedef struct {
 #include "launcher.h"
 
 char * gdb_transceive_rsp_packet(ExecStatus * stat, char * command);
-char * gdb_read(int fd);
+char * gdb_read(ExecStatus * stat);
 bool gdb_send_rsp_packet(ExecStatus * stat, char * command);
 char * gdb_ffwd_to_label(ExecStatus * stat, char * label);
 

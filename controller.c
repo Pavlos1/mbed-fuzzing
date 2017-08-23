@@ -35,18 +35,18 @@ char * gdb_transceive_rsp_packet(ExecStatus * stat, char * command) {
     free(payload);
     if (!res) return NULL;
     
-    return gdb_read(stat->fd_stdout);
+    return gdb_read(stat);
 }
 
 
 /**
  * Reads and parses as RSP packet from GDB
  */
-char * gdb_read(int fd) {
+char * gdb_read(ExecStatus * stat) {
     // wait for transmission ACK
     char tmp;
     do {
-        read(fd, &tmp, 1);
+        read(stat->fd_stdout, &tmp, 1);
         
         if (tmp == '-') {
             printf("[DEBUG] GDB requested retransmission\n");
@@ -59,13 +59,13 @@ char * gdb_read(int fd) {
     
     // wait for start of message
     do {
-        read(fd, &tmp, 1);
+        read(stat->fd_stdout, &tmp, 1);
         printf("[DEBUG] Dropping character: %c\n", tmp);
     } while (tmp != '$');
     printf("[DEBUG] Starting message read...\n");
     
     // and read the rest of the packet
-    unsigned int size = read(fd, buf, 1023);
+    unsigned int size = read(stat->fd_stdout, buf, 1023);
     buf[1023] = '\0';
     printf("[DEBUG] Candidate message read: %s\n", buf);
     
@@ -109,6 +109,11 @@ char * gdb_read(int fd) {
                 printf("[DEBUG] Actual: %d\n", checksum_assert);
                 free(buf);
                 return NULL;
+            }
+            
+            if (!write(stat->fd_stdin, "+", 1)) {
+                printf("[FATAL] Broken pipe?\n");
+                exit(1);
             }
             
             char * buf_realloc = realloc(buf, msg_size);
@@ -166,11 +171,20 @@ void gdb_read_registers(ExecStatus * stat) {
         exit(1);
     }
     
+    stat->regs_avail = (1 << N_REGS) - 1;
     for (int reg=0; reg < N_REGS; reg++) {
         uint32_t val=0;
         for (int byte=0; byte<4; byte++) {
-            val += from_hex_digit(real_regs[(reg << 3) + (byte << 1)]) << ((byte << 3) + 4);
-            val += from_hex_digit(real_regs[(reg << 3) + (byte << 1) + 1]) << (byte << 3);
+            uint32_t high_digit = from_hex_digit(real_regs[(reg << 3) + (byte << 1)]);
+            uint32_t low_digit  = from_hex_digit(real_regs[(reg << 3) + (byte << 1) + 1]);
+            if ((high_digit < 0) || (low_digit < 0)) {
+                printf("[WARN] Read on register %d failed\n", reg);
+                val=0;
+                stat->regs_avail &= ~(1 << reg);
+                break;
+            }
+            val += high_digit << ((byte << 3) + 4);
+            val += low_digit << (byte << 3);
         }
         stat->regs[reg] = val;
     }
