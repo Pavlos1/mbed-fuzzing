@@ -27,11 +27,15 @@ typedef struct {
     Elf32_Off     e_shoff;
     Elf32_Word    e_flags;
     Elf32_Half    e_ehsize;
+    Elf32_Half    e_phentsize;
     Elf32_Half    e_phnum;
     Elf32_Half    e_shentsize;
     Elf32_Half    e_shnum;
     Elf32_Half    e_shstrndx;
 } Elf32_Ehdr;
+
+#define SHT_SYMTAB 2
+#define SHT_STRTAB 3
 
 typedef struct {
     Elf32_Word sh_name;
@@ -57,6 +61,7 @@ typedef struct {
 
 typedef struct {
     char * elf_strings;
+    Elf32_Word n_syms;
     Elf32_Sym * syms;
 } ExecData;
 
