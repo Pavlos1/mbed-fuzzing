@@ -200,10 +200,9 @@ void gdb_read_registers(ExecStatus * stat) {
  * TODO: VFP registers?
  */
 void gdb_write_registers(ExecStatus * stat) {
-    char * out = safe_malloc((N_REGS << 3) + 3);
+    char * out = safe_malloc((N_REGS << 3) + 2);
     int i=0;
     out[i++] = 'G';
-    out[i++] = ' ';
     
     for (int reg=0; reg < N_REGS; reg++) {
         for (int byte=0; byte<4; byte++) {

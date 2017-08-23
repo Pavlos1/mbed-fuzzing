@@ -17,9 +17,8 @@ int main() {
         printf("r%d = %x\n", i, stat->regs[i]);
     }
     
-    //stat->regs[0] = 0x454545;
-    //gdb_write_registers(stat);
-    gdb_send_rsp_packet(stat, "P0=45454545");
+    stat->regs[0] = 0x45454545;
+    gdb_write_registers(stat);
     
     gdb_read_registers(stat);
     for (int i=0; i<N_REGS; i++) {
