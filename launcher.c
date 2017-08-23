@@ -77,7 +77,9 @@ ExecStatus * launch_virtual_stm32(char * qemu_executable, char * bin_file, char 
     
     printf("[DEBUG] loading symbol files...\n");
     
-    // TODO: load symbols from file
+    if (!elf_load_symbols(&ret->data, sym_file)) {
+        printf("[WARN] Symbol loading failed\n");
+    }
     
     // return file descriptors
     return ret;

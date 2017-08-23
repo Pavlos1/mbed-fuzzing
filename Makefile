@@ -1,6 +1,6 @@
 CC := gcc
 CFLAGS := ""
-BASE_TARGETS := launcher.o controller.o util.o
+BASE_TARGETS := launcher.o controller.o util.o elf.o
 
 default: all
 

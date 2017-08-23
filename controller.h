@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "elf.h"
 
 #define REG_FP 12
 #define REG_SP 13
@@ -22,6 +23,8 @@ typedef struct {
     // bitfield
     uint64_t regs_avail;
     
+    // data loaded from ELF, e.g. symbols
+    ExecData data;
 } ExecStatus;
 
 #include "util.h"
