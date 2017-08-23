@@ -6,11 +6,45 @@
 #include <string.h>
 #include <unistd.h>
 
+
+/**
+ * Internal use only. Sets symbol data to
+ * invalid values to signify that no symbols
+ * are available.
+ */
 void elf_no_symbols(ExecData * data) {
     data->elf_strings = NULL;
     data->syms = NULL;
 }
 
+
+/**
+ * Performs a linear search on the symbol table
+ * to find an address corresponding to a given
+ * label
+ *
+ * Returns 0 if symbol was not found
+ */
+Elf32_Addr elf_lookup_symbol(ExecData * data, char * symbol_name) {
+    if ((data->elf_strings == NULL) || (data->syms == NULL)) return 0;
+    
+    for (int i=0; i<data->n_syms; i++) {
+        char * cur_symbol_name = &data->elf_strings[data->syms[i].st_name];
+        printf("[DEBUG] Matching symbol: \"%s\"\n", cur_symbol_name);
+        if (strcmp(cur_symbol_name, symbol_name)) {
+            return data->syms[i].st_value;
+        }
+    }
+    
+    return 0;
+}
+
+
+/**
+ * Loads (SYMTAB) symbols from ELF file
+ *
+ * Returns true iff. symbols were read successfully
+ */
 bool elf_load_symbols(ExecData * data, char * sym_file) {
     int fd = open(sym_file, O_RDONLY);
     if (fd <= 0) {
@@ -56,6 +90,7 @@ bool elf_load_symbols(ExecData * data, char * sym_file) {
             printf("[DEBUG] Found symtab\n");
             symtab = &sections[i];
         } else if (sections[i].sh_type == SHT_STRTAB) {
+            // FIXME: There are multiple strtabs
             printf("[DEBUG] Found strtab\n");
             strtab = &sections[i];
         }

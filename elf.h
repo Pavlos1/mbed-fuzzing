@@ -65,6 +65,7 @@ typedef struct {
     Elf32_Sym * syms;
 } ExecData;
 
-bool elf_load_symbols(ExecData * sym, char * sym_file);
+bool elf_load_symbols(ExecData * data, char * sym_file);
+Elf32_Addr elf_lookup_symbol(ExecData * data, char * symbol_name);
 
 #endif

@@ -4,6 +4,7 @@
 #include "launcher.h"
 #include "controller.h"
 #include "util.h"
+#include "elf.h"
 
 int main() {
     char buf[1024];
@@ -32,4 +33,6 @@ int main() {
     for (int i=0; i<N_REGS; i++) {
         printf("r%d = %x\n", i, stat->regs[i]);
     }
+    
+    printf("'main' at: %d\n", elf_lookup_symbol(&stat->data, "main"));
 }
