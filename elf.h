@@ -60,6 +60,7 @@ typedef struct {
 } Elf32_Sym;
 
 typedef struct {
+    uint32_t elf_strings_len;
     char * elf_strings;
     Elf32_Word n_syms;
     Elf32_Sym * syms;

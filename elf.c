@@ -15,6 +15,8 @@
 void elf_no_symbols(ExecData * data) {
     data->elf_strings = NULL;
     data->syms = NULL;
+    data->n_syms = 0;
+    data->elf_strings_len = 0;
 }
 
 
@@ -30,8 +32,9 @@ Elf32_Addr elf_lookup_symbol(ExecData * data, char * symbol_name) {
     
     for (int i=0; i<data->n_syms; i++) {
         char * cur_symbol_name = &data->elf_strings[data->syms[i].st_name];
+        uint32_t max_string_len = data->elf_strings_len - data->syms[i].st_name;
         printf("[DEBUG] Matching symbol: \"%s\"\n", cur_symbol_name);
-        if (strcmp(cur_symbol_name, symbol_name)) {
+        if (safe_compare_null_term(cur_symbol_name, symbol_name, max_string_len)) {
             return data->syms[i].st_value;
         }
     }
@@ -78,9 +81,22 @@ bool elf_load_symbols(ExecData * data, char * sym_file) {
         return false;
     }
     
+    if (!e_hdr.e_shstrndx) {
+        printf("[DEBUG] No strings\n");
+        elf_no_symbols(data);
+        return false;
+    }
+    
     lseek(fd, e_hdr.e_shoff, SEEK_SET);
     Elf32_Shdr sections[e_hdr.e_shnum];
     read(fd, &sections, e_hdr.e_shnum * sizeof(Elf32_Shdr));
+    
+    Elf32_Shdr * header_names = &sections[e_hdr.e_shstrndx];
+    
+    printf("[DEBUG] malloc'ing header_names_str\n");
+    char * header_names_str = safe_malloc(header_names->sh_size);
+    lseek(fd, header_names->sh_offset, SEEK_SET);
+    read(fd, header_names_str, header_names->sh_size);
     
     Elf32_Shdr * symtab = NULL;
     Elf32_Shdr * strtab = NULL;
@@ -90,24 +106,31 @@ bool elf_load_symbols(ExecData * data, char * sym_file) {
             printf("[DEBUG] Found symtab\n");
             symtab = &sections[i];
         } else if (sections[i].sh_type == SHT_STRTAB) {
-            // FIXME: There are multiple strtabs
             printf("[DEBUG] Found strtab\n");
-            strtab = &sections[i];
+            char * name = &header_names_str[sections[i].sh_name];
+            uint32_t name_max_len = header_names->sh_size - sections[i].sh_name;
+            if (safe_compare_null_term(name, ".strtab", name_max_len)) {
+                printf("[DEBUG] Found .strtab\n");
+                strtab = &sections[i];
+            }
         }
     }
     
     if ((symtab == NULL) || (strtab == NULL)) {
         printf("[DEBUG] No symtab or strtab section\n");
         elf_no_symbols(data);
+        free(header_names_str);
         return false;
     }
     
     if (symtab->sh_entsize != sizeof(Elf32_Sym)) {
         printf("[DEBUG] Bad symbol entry sizes\n");
         elf_no_symbols(data);
+        free(header_names_str);
         return false;
     }
     
+    data->elf_strings_len = strtab->sh_size;
     lseek(fd, strtab->sh_offset, SEEK_SET);
     data->elf_strings = safe_malloc(strtab->sh_size);
     read(fd, data->elf_strings, strtab->sh_size);
@@ -118,6 +141,14 @@ bool elf_load_symbols(ExecData * data, char * sym_file) {
     read(fd, data->syms, symtab->sh_size);
     
     close(fd);
+    free(header_names_str);
+    
+    printf("[DEBUG] Successfully loaded %u symbols\n", data->n_syms);
+    printf("[DEBUG] They are:\n");
+    for (int i=0; i<data->n_syms; i++) {
+        uint32_t index = data->syms[i].st_name;
+        printf("[DEBUG] %s\n", &data->elf_strings[index], data->elf_strings_len - index);
+    }
     
     return true;
 }
