@@ -189,7 +189,7 @@ void gdb_read_registers(ExecStatus * stat) {
         stat->regs[reg] = val;
     }
     
-    //free(real_regs);
+    free(real_regs);
 }
 
 
