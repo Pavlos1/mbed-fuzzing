@@ -39,6 +39,18 @@ static inline unsigned int from_hex_digit(char digit) {
 }
 
 
+
+/*
+ * Prints a 32-bit address in hex
+ */
+static inline void ppr_address_32(char * buf, unsigned int addr) {
+    for (unsigned int i=0; i<8; i++) {
+        unsigned int cur = (addr & (0xf << i)) >> i;
+        buf[i] = cur >= 10 ? cur - 10 + 'A' : cur + '0';
+    }
+}
+
+
 static inline void * safe_malloc(size_t size) {
     DEBUG("Allocating %d bytes", size);
     void * ret = malloc(size);

@@ -146,15 +146,32 @@ bool gdb_send_rsp_packet(ExecStatus * stat, char * command) {
 
 
 /**
- * Sets a breakpoint at requested label resumes execution
+ * Sets a breakpoint at requested label and resumes execution
  * until breakpoint is hit. Breakpoints created this way
  * do not persist, though they may clobber already existing
  * ones.
- *
- * TODO: Implement
  */
-char * gdb_ffwd_to_label(ExecStatus * stat, char * label) {
-    return '\0';
+bool gdb_ffwd_to_label(ExecStatus * stat, Elf32_Addr label) {
+    char command[] = "Z1,00000000,2";
+    ppr_address_32(&command[3], label);
+    
+    if (!gdb_send_rsp_packet(stat, command)) {
+        DEBUG("Set breakpoint failed");
+        return false;
+    }
+    
+    if (!gdb_send_rsp_packet(stat, "c")) {
+        DEBUG("Continue to breakpoint failed");
+        return false;
+    }
+    
+    command[0] = 'z';
+    if (!gdb_send_rsp_packet(stat, command)) {
+        DEBUG("Clear breakpoint failed");
+        return false;
+    }
+    
+    return true;
 }
 
 

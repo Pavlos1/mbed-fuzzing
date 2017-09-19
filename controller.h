@@ -33,7 +33,7 @@ typedef struct {
 char * gdb_transceive_rsp_packet(ExecStatus * stat, char * command);
 char * gdb_read(ExecStatus * stat);
 bool gdb_send_rsp_packet(ExecStatus * stat, char * command);
-char * gdb_ffwd_to_label(ExecStatus * stat, char * label);
+bool gdb_ffwd_to_label(ExecStatus * stat, Elf32_Addr label);
 
 void gdb_read_registers(ExecStatus * stat);
 void gdb_write_registers(ExecStatus * stat);
