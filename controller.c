@@ -30,7 +30,7 @@ char * gdb_transceive_rsp_packet(ExecStatus * stat, char * command) {
     char * payload = safe_malloc(strlen(command) + 6);
     sprintf(payload, "$%s#%c%c\n", command, high_check, low_check);
     
-    printf("[DEBUG] Sending RSP packet to GDB: %s\n", payload);
+    DEBUG("Sending RSP packet to GDB: %s", payload);
     bool res = write(stat->fd_stdin, payload, strlen(payload)) >= 0;
     free(payload);
     if (!res) return NULL;
@@ -49,29 +49,29 @@ char * gdb_read(ExecStatus * stat) {
         read(stat->fd_stdout, &tmp, 1);
         
         if (tmp == '-') {
-            printf("[DEBUG] GDB requested retransmission\n");
+            DEBUG("GDB requested retransmission");
             return NULL;
         }
     } while (tmp != '+');
-    printf("[DEBUG] Got transmission ACK\n");
+    DEBUG("Got transmission ACK");
 
     char * buf = safe_malloc(1024);
     
     // wait for start of message
     do {
         read(stat->fd_stdout, &tmp, 1);
-        printf("[DEBUG] Dropping character: %c\n", tmp);
+        DEBUG("Dropping character: %c", tmp);
     } while (tmp != '$');
-    printf("[DEBUG] Starting message read...\n");
+    DEBUG("Starting message read...");
     
     // and read the rest of the packet
     unsigned int size = read(stat->fd_stdout, buf, 1023);
     buf[1023] = '\0';
-    printf("[DEBUG] Candidate message read: %s\n", buf);
+    DEBUG("Candidate message read: %s", buf);
     
     if (size < 3) {
-        printf("[DEBUG] RSP packet too short\n");
-        printf("[DEBUG] Got response: %s\n", buf);
+        DEBUG("RSP packet too short");
+        DEBUG("Got response: %s", buf);
         free(buf);
         return NULL;
     }
@@ -79,10 +79,10 @@ char * gdb_read(ExecStatus * stat) {
     unsigned int checksum = 0, checksum_assert = 0;
     for (unsigned int i=0; i < size - 2; i++) {
         if (buf[i] == '#') {
-            printf("[DEBUG] Found termination character\n");
+            DEBUG("Found termination character");
             
             if (i == 0) {
-                printf("[WARN] Unsupported command\n");
+                DEBUG("Unsupported command");
                 free(buf);
                 return NULL;
             }
@@ -95,7 +95,7 @@ char * gdb_read(ExecStatus * stat) {
             unsigned int checksum_assert_high = from_hex_digit(buf[i++]);
             unsigned int checksum_assert_low = from_hex_digit(buf[i++]);
             if ((checksum_assert_low < 0) || (checksum_assert_high < 0)) {
-                printf("[DEBUG] Checksum contains invalid characters\n");
+                DEBUG("Checksum contains invalid characters");
             	free(buf);
             	return NULL;
             }
@@ -104,21 +104,21 @@ char * gdb_read(ExecStatus * stat) {
             checksum_assert += checksum_assert_high << 4;
             
             if (checksum != checksum_assert) {
-                printf("[DEBUG] Checksum incorrect\n");
-                printf("[DEBUG] Expecting: %d\n", checksum);
-                printf("[DEBUG] Actual: %d\n", checksum_assert);
+                DEBUG("Checksum incorrect");
+                DEBUG("Expecting: %d", checksum);
+                DEBUG("Actual: %d", checksum_assert);
                 free(buf);
                 return NULL;
             }
             
             if (!write(stat->fd_stdin, "+", 1)) {
-                printf("[FATAL] Broken pipe?\n");
+                DEBUG("Broken pipe?");
                 exit(1);
             }
             
             char * buf_realloc = realloc(buf, msg_size);
             if (buf_realloc != buf) {
-                printf("[FATAL] Memory re-allocation failed\n");
+                DEBUG("Memory re-allocation failed");
                 exit(1);
             }
             return buf_realloc;
@@ -127,7 +127,7 @@ char * gdb_read(ExecStatus * stat) {
         checksum += buf[i];
     }
     
-    printf("[DEBUG] Message never terminated\n");
+    DEBUG("Message never terminated");
     free(buf);
     return NULL;
 }
@@ -167,7 +167,7 @@ char * gdb_ffwd_to_label(ExecStatus * stat, char * label) {
 void gdb_read_registers(ExecStatus * stat) {
     char * real_regs = gdb_transceive_rsp_packet(stat, "g");
     if (!real_regs || (real_regs[0] == 'E') || (strlen(real_regs) < (N_REGS << 3))) {
-        printf("[FATAL] Register read failed\n");
+        FATAL("Register read failed");
         exit(1);
     }
     
@@ -178,7 +178,7 @@ void gdb_read_registers(ExecStatus * stat) {
             uint32_t high_digit = from_hex_digit(real_regs[(reg << 3) + (byte << 1)]);
             uint32_t low_digit  = from_hex_digit(real_regs[(reg << 3) + (byte << 1) + 1]);
             if ((high_digit < 0) || (low_digit < 0)) {
-                printf("[WARN] Read on register %d failed\n", reg);
+                WARN("Read on register %d failed", reg);
                 val=0;
                 stat->regs_avail &= ~(1 << reg);
                 break;
@@ -217,7 +217,7 @@ void gdb_write_registers(ExecStatus * stat) {
     
     char * ret = gdb_transceive_rsp_packet(stat, out);
     if (!ret || (ret[0] == 'E')) {
-        printf("[FATAL] Register write failed\n");
+        FATAL("Register write failed");
         exit(1);
     }
     

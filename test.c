@@ -14,7 +14,7 @@ int main() {
         "/home/pavel/workspace/comp2300-lab-1/Debug/comp2300-lab-1.elf");
         
     if (gdb_send_rsp_packet(stat, "qSupported:multiprocess+;swbreak+;hwbreak+;qRelocInsn+;fork-events+;vfork-events+;exec-events+;vContSupported+;QThreadEvents+;no-resumed+")) {
-        printf("[DEBUG] qSupported OK\n");
+        DEBUG("qSupported OK");
     }
 
     gdb_read_registers(stat);
@@ -26,7 +26,7 @@ int main() {
     gdb_write_registers(stat);
     
     if (gdb_send_rsp_packet(stat, "P1=42424242")) {
-        printf("[DEBUG] single-register write OK\n");
+        DEBUG("single-register write OK");
     }
     
     gdb_read_registers(stat);

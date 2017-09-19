@@ -14,37 +14,37 @@
  * for pipe creation code
  */
 ExecStatus * launch_virtual_stm32(char * qemu_executable, char * bin_file, char * sym_file) {
-    printf("[DEBUG] entering launch_virtual_stm32_ex\n");
+    DEBUG("entering launch_virtual_stm32_ex");
 
     int stdinFDs[2];
     int stdoutFDs[2];
     
     // set up pipes for communicating with GDB
     if (pipe(stdinFDs) < 0) {
-        fprintf(stderr, "[FATAL] Failed to set up pipes while launching QEMU\n");
+        FATAL("Failed to set up pipes while launching QEMU");
         exit(1);
     }
     if (pipe(stdoutFDs) < 0) {
         close(stdinFDs[PIPE_READ]);
         close(stdoutFDs[PIPE_WRITE]);
-        fprintf(stderr, "[FATAL] Failed to set up pipes while launching QEMU\n");
+        FATAL("Failed to set up pipes while launching QEMU");
         exit(1);
     }
 
     int pid = fork();
     if (pid < 0) {
-        fprintf(stderr, "[FATAL] Failed to fork while trying to execute QEMU\n");
+        FATAL("[FATAL] Failed to fork while trying to execute QEMU");
         exit(1);
     } else if (pid == 0) {
         // redirect stdin
         if (dup2(stdinFDs[PIPE_READ], STDIN_FILENO) == -1) {
-            fprintf(stderr, "[FATAL] Failed to set up pipes while launching QEMU\n");
+            FATAL("Failed to set up pipes while launching QEMU");
             exit(1);
         }
 
         // redirect stdout
         if (dup2(stdoutFDs[PIPE_WRITE], STDOUT_FILENO) == -1) {
-            fprintf(stderr, "[FATAL] Failed to set up pipes while launching QEMU\n");
+            FATAL("Failed to set up pipes while launching QEMU");
             exit(1);
         }
         
@@ -62,7 +62,7 @@ ExecStatus * launch_virtual_stm32(char * qemu_executable, char * bin_file, char 
             NULL);
             
         // if `exec` returns, something went wrong
-        fprintf(stderr, "[FATAL] Failed to exec QEMU\n");
+        FATAL("Failed to exec QEMU");
         exit(1);
     }
     
@@ -75,10 +75,10 @@ ExecStatus * launch_virtual_stm32(char * qemu_executable, char * bin_file, char 
     ret->fd_stdin  = stdinFDs[PIPE_WRITE];
     ret->fd_stdout = stdoutFDs[PIPE_READ];
     
-    printf("[DEBUG] loading symbol files...\n");
+    DEBUG("loading symbol files...");
     
     if (!elf_load_symbols(&ret->data, sym_file)) {
-        printf("[WARN] Symbol loading failed\n");
+        WARN("Symbol loading failed");
     }
     
     // return file descriptors
