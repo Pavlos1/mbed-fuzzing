@@ -33,7 +33,7 @@ ExecStatus * launch_virtual_stm32(char * qemu_executable, char * bin_file, char 
 
     int pid = fork();
     if (pid < 0) {
-        FATAL("[FATAL] Failed to fork while trying to execute QEMU");
+        FATAL("Failed to fork while trying to execute QEMU");
         exit(1);
     } else if (pid == 0) {
         // redirect stdin

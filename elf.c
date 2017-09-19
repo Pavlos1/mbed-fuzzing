@@ -51,7 +51,7 @@ Elf32_Addr elf_lookup_symbol(ExecData * data, char * symbol_name) {
 bool elf_load_symbols(ExecData * data, char * sym_file) {
     int fd = open(sym_file, O_RDONLY);
     if (fd <= 0) {
-        DEBUG("[Failed to open symbol file");
+        DEBUG("Failed to open symbol file");
         elf_no_symbols(data);
         return false;
     }
@@ -62,7 +62,7 @@ bool elf_load_symbols(ExecData * data, char * sym_file) {
     // Only a rudimentary check
     // XXX: Should we at least check endianness or arch?
     if (!strncmp(e_hdr.e_ident, "\x7D" "ELF", 4)) {
-        DEBUG("[Not an ELF file");
+        DEBUG("Not an ELF file");
         elf_no_symbols(data);
         return false;
     }
@@ -93,7 +93,7 @@ bool elf_load_symbols(ExecData * data, char * sym_file) {
     
     Elf32_Shdr * header_names = &sections[e_hdr.e_shstrndx];
     
-    DEBUG("[malloc'ing header_names_str");
+    DEBUG("malloc'ing header_names_str");
     char * header_names_str = safe_malloc(header_names->sh_size);
     lseek(fd, header_names->sh_offset, SEEK_SET);
     read(fd, header_names_str, header_names->sh_size);
