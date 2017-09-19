@@ -36,10 +36,10 @@ int main() {
     }
     
     Elf32_Addr main_sym = elf_lookup_symbol(&stat->data, "main");
-    printf("'main' at: %d\n", main_sym);
+    printf("'main' at: %x\n", main_sym);
     
     Elf32_Addr loop_sym = elf_lookup_symbol(&stat->data, "loop");
-    printf("'loop' at: %d\n", loop_sym);
+    printf("'loop' at: %x\n", loop_sym);
     
     printf("Skip to main..\n");
     if (!gdb_ffwd_to_label(stat, main_sym)) {

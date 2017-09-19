@@ -45,8 +45,8 @@ static inline unsigned int from_hex_digit(char digit) {
  */
 static inline void ppr_address_32(char * buf, unsigned int addr) {
     for (unsigned int i=0; i<8; i++) {
-        unsigned int cur = (addr & (0xf << i)) >> i;
-        buf[i] = cur >= 10 ? cur - 10 + 'A' : cur + '0';
+        unsigned int cur = (addr & (0xf << (i << 2))) >> (i << 2);
+        buf[7-i] = cur >= 10 ? cur - 10 + 'A' : cur + '0';
     }
 }
 
