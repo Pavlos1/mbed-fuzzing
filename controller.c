@@ -28,7 +28,7 @@ char * gdb_transceive_rsp_packet(ExecStatus * stat, char * command) {
     else high_check = 'a' + (_high_check - 10);
     
     char * payload = safe_malloc(strlen(command) + 6);
-    sprintf(payload, "$%s#%c%c\n", command, high_check, low_check);
+    sprintf(payload, "$%s#%c%c", command, high_check, low_check);
     
     DEBUG("Sending RSP packet to GDB: %s", payload);
     bool res = write(stat->fd_stdin, payload, strlen(payload)) >= 0;

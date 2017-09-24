@@ -1,6 +1,6 @@
 CC := gcc
 CFLAGS := -O3
-CPPFLAGS := -DLOG_DEBUG -DLOG_WARN -DLOG_FATAL
+CPPFLAGS := -DLOG_WARN -DLOG_FATAL
 BASE_TARGETS := launcher.o controller.o util.o elf.o
 
 default: all
