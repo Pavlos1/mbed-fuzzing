@@ -30,10 +30,10 @@ int main() {
         printf("r%d = %x\n", i, stat->regs[i]);
     }
     
-    Elf32_Addr main_sym = elf_lookup_symbol(&stat->data, "main");
+    Elf32_Addr main_sym = elf_lookup_symbol(stat->data, "main");
     printf("'main' at: %x\n", main_sym);
     
-    Elf32_Addr loop_sym = elf_lookup_symbol(&stat->data, "loop");
+    Elf32_Addr loop_sym = elf_lookup_symbol(stat->data, "loop");
     printf("'loop' at: %x\n", loop_sym);
     
     printf("Skip to main..\n");

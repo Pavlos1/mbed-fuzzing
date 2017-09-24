@@ -24,7 +24,7 @@ typedef struct {
     uint64_t regs_avail;
     
     // data loaded from ELF, e.g. symbols
-    ExecData data;
+    ExecData * data;
 } ExecStatus;
 
 #include "util.h"

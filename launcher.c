@@ -8,12 +8,26 @@
 
 
 /**
+ * Loads the binary into QEMU and starts GDB server
+ */
+ExecStatus * launch_virtual_stm32(char * qemu_executable, char * bin_file, char * sym_file) {
+    ExecData * elf_data = safe_malloc(sizeof(ExecData));
+    
+    if (!elf_load_symbols(elf_data, sym_file)) {
+        WARN("Symbol loading failed");
+    }
+    
+    return launch_virtual_stm32_ex(qemu_executable, bin_file, elf_data);
+}
+
+
+/**
  * Loads the binary into QEMU and starts GDB server, loading debug symbols from file given
  *
  * See: https://stackoverflow.com/questions/9405985/linux-3-0-executing-child-process-with-piped-stdin-stdout
  * for pipe creation code
  */
-ExecStatus * launch_virtual_stm32(char * qemu_executable, char * bin_file, char * sym_file) {
+ExecStatus * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, ExecData * elf_data) {
     DEBUG("entering launch_virtual_stm32_ex");
 
     int stdinFDs[2];
@@ -75,11 +89,7 @@ ExecStatus * launch_virtual_stm32(char * qemu_executable, char * bin_file, char 
     ret->fd_stdin  = stdinFDs[PIPE_WRITE];
     ret->fd_stdout = stdoutFDs[PIPE_READ];
     
-    DEBUG("loading symbol files...");
-    
-    if (!elf_load_symbols(&ret->data, sym_file)) {
-        WARN("Symbol loading failed");
-    }
+    ret->data = elf_data;
     
     // return file descriptors
     return ret;
