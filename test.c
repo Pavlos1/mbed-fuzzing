@@ -1,17 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include "launcher.h"
 #include "controller.h"
 #include "util.h"
 #include "elf.h"
+#include "scheduler.h"
 
 int main() {
+    start_workers(3);
+
     char buf[1024];
 
-    ExecStatus * stat = launch_virtual_stm32("/home/pavel/Development/mbed/qemu_stm32/arm-softmmu/qemu-system-arm",
-        "/home/pavel/workspace/comp2300-lab-1/Debug/comp2300-lab-1.bin",
-        "/home/pavel/workspace/comp2300-lab-1/Debug/comp2300-lab-1.elf");
+    ExecStatus * stat = launch_virtual_stm32(QEMU_SYSTEM_ARM, BIN_FILE, ELF_FILE);
 
     gdb_read_registers(stat);
     for (int i=0; i<N_REGS; i++) {
@@ -78,4 +80,6 @@ int main() {
     } else {
         printf("PRIVDEFENA clear\n");
     }
+    
+    pthread_exit(NULL);
 }

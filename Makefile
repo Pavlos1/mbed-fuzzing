@@ -1,12 +1,12 @@
 CC := gcc
 CFLAGS := -O3
 CPPFLAGS := -DLOG_WARN -DLOG_FATAL
-BASE_TARGETS := launcher.o controller.o util.o elf.o memprotect.o
+BASE_TARGETS := launcher.o controller.o util.o elf.o memprotect.o scheduler.o
 
 default: all
 
 test: all test.o
-	$(CC) $(BASE_TARGETS) test.o $(CFLAGS) $(CPPFLAGS) -o $@
+	$(CC) $(BASE_TARGETS) test.o $(CFLAGS) $(CPPFLAGS) -lpthread -o $@
 	./$@
 	
 

@@ -26,6 +26,11 @@
 #endif
 
 
+#define QEMU_SYSTEM_ARM "/home/pavel/Development/mbed/qemu_stm32/arm-softmmu/qemu-system-arm"
+#define BIN_FILE "/home/pavel/workspace/comp2300-lab-1/Debug/comp2300-lab-1.bin"
+#define ELF_FILE "/home/pavel/workspace/comp2300-lab-1/Debug/comp2300-lab-1.elf"
+
+
 /**
  * Does what it says on the tin
  *
