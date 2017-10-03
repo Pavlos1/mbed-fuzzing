@@ -152,7 +152,7 @@ bool gdb_send_rsp_packet(ExecStatus * stat, char * command) {
  * ones.
  */
 bool gdb_ffwd_to_label(ExecStatus * stat, Elf32_Addr label) {
-    char command[] = "Z1,00000000,2";
+    char command[] = "Z1,00000000,0";
     ppr_address_32(&command[3], label);
     
     if (!gdb_send_rsp_packet(stat, command)) {
@@ -239,5 +239,55 @@ void gdb_write_registers(ExecStatus * stat) {
     }
     
     free(out);
+}
+
+
+/**
+ * Reads `size` bytes of CPU memory starting at `addr`
+ */
+void gdb_read_memory(ExecStatus * stat, uint32_t addr, uint32_t size, uint8_t * buf) {
+    char command[] = "m00000000,00000000";
+    ppr_address_32(&command[1], addr);
+    ppr_address_32(&command[10], size);
+    char * raw = gdb_transceive_rsp_packet(stat, command);
+    
+    if (!raw || (raw[0] == 'E') || (strlen(raw) < (size << 1))) {
+        FATAL("Could not read CPU memory");
+        exit(1);
+    }
+    
+    for (uint32_t i=0; i<size; i++) {
+        uint8_t high = from_hex_digit(raw[i << 1]);
+        uint8_t low = from_hex_digit(raw[(i << 1) + 1]);
+        buf[i] = (high << 4) | low;
+    }
+}
+
+
+/**
+ * Writes `size` bytes from `buf` into CPU memory starting at `addr`
+ */
+void gdb_write_memory(ExecStatus * stat, uint32_t addr, uint32_t size, uint8_t * buf) {
+    char * command = safe_malloc(20 + (size << 1));
+    strcpy(command, "M00000000,00000000:");
+    ppr_address_32(&command[1], addr);
+    ppr_address_32(&command[10], size);
+    
+    for (uint32_t i=0; i<size; i++) {
+        uint8_t high = buf[i] >> 4;
+        uint8_t low = buf[i] & 0xf;
+        command[19 + (i << 2)] = high < 10 ? high + '0' : (high - 0xa) + 'a';
+        command[19 + (i << 2) + 1] = low  < 10 ? low  + '0' : (low  - 0xa) + 'a';
+    }
+    
+    command[19 + (size << 1)] = '\0';
+    
+    char * ret = gdb_transceive_rsp_packet(stat, command);
+    if (!ret || (ret[0] == 'E')) {
+        FATAL("Could not write CPU memory");
+        exit(1);
+    }
+    
+    free(command);
 }
 

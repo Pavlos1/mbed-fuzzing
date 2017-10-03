@@ -91,7 +91,10 @@ ExecStatus * launch_virtual_stm32_ex(char * qemu_executable, char * bin_file, Ex
     
     ret->data = elf_data;
     
-    // return file descriptors
+    if (!enable_memory_protection(ret)) {
+        WARN("Could not set up memory protection");
+    }
+    
     return ret;
 }
 

@@ -1,7 +1,7 @@
 CC := gcc
 CFLAGS := -O3
 CPPFLAGS := -DLOG_WARN -DLOG_FATAL
-BASE_TARGETS := launcher.o controller.o util.o elf.o
+BASE_TARGETS := launcher.o controller.o util.o elf.o memprotect.o
 
 default: all
 

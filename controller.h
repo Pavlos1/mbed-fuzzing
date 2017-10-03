@@ -38,4 +38,7 @@ bool gdb_ffwd_to_label(ExecStatus * stat, Elf32_Addr label);
 void gdb_read_registers(ExecStatus * stat);
 void gdb_write_registers(ExecStatus * stat);
 
+void gdb_read_memory(ExecStatus * stat, uint32_t addr, uint32_t size, uint8_t * buf);
+void gdb_write_memory(ExecStatus * stat, uint32_t addr, uint32_t size, uint8_t * buf);
+
 #endif

@@ -54,7 +54,28 @@ int main() {
         printf("Got to loop!\n");
         gdb_read_registers(stat);
         printf("PC=%x\n", stat->regs[REG_PC]);
+        gdb_send_rsp_packet(stat, "s");
     }
     
     printf("That's enough..\n");
+    
+    uint8_t mpu_ctrl_val[4];
+    gdb_read_memory(stat, MPU_CTRL_ADDRESS, 4, mpu_ctrl_val);
+    if (mpu_ctrl_val[0] & 1) {
+        printf("ENABLE set\n");
+    } else {
+        printf("ENABLE clear\n");
+    }
+    
+    if (mpu_ctrl_val[0] & 2) {
+        printf("HFNMIENA set\n");
+    } else {
+        printf("HFNMIENA clear\n");
+    }
+    
+    if (mpu_ctrl_val[0] & 4) {
+        printf("PRIVDEFENA set\n");
+    } else {
+        printf("PRIVDEFENA clear\n");
+    }
 }
