@@ -8,10 +8,6 @@
  * Also sets a breakpoint on the destination of the
  * MemManage interrupt, to trap memory faults
  *
- * TODO: Apparently if we enable the MPU without setting
- *       up any accessible regions, as we do here,
- *       Bad Stuff Could Happen (TM)
- *
  * TODO: Also apparently the remote stub can write memory
  *       however it wants when using 'M', which is a problem
  *       because the MPU registers must be word-accessed
@@ -39,6 +35,32 @@ bool enable_memory_protection(ExecStatus * stat) {
         WARN("Could not set up memory exception trap");
         return false;
     }
+    
+    // encode default memory region, for testing purposes this shall
+    // be the entire GPIOE block
+    // NOTE: here we using the RBAR register to also set the region number
+    uint32_t _mpu_rbar_val = ((GPIOE_ADDRESS >> 5) << 5) // clear last 5 bits for other fields
+        | (1 << 4)                                       // set VALID => lowest 4 bits are memory region
+            | 1;                                         // memory region itself
+    uint8_t mpu_rbar_val[4];
+    mpu_rbar_val[0] = _mpu_rbar_val & 0xff;
+    mpu_rbar_val[1] = (_mpu_rbar_val & 0xff00) >> 8;
+    mpu_rbar_val[2] = (_mpu_rbar_val & 0xff0000) >> 16;
+    mpu_rbar_val[3] = (_mpu_rbar_val & 0xff000000) >> 24;
+    gdb_write_memory(stat, MPU_RBAR_ADDRESS, 4, mpu_rbar_val);
+    
+    // disallow writing to this region
+    // SIZE=10 (2^10 = 1024; the size of the entire GPIOE block)
+    // AP=101 (privileged read only; i.e. should fault when we try to write LED status)
+    // XN=1 (no reason this should ever be executed)
+    // SRD = 0 (all subregions have the access policy enforced)
+    // TEXCB = 00001 (shared device)
+    uint8_t mpu_rasr_val[4];
+    mpu_rasr_val[0]  =  (5 << 1) | 1; // size and enable the region
+    mpu_rasr_val[1]  =  0;            // SRD
+    mpu_rasr_val[2]  =  1;            // TEXCB
+    mpu_rasr_val[3]  =  (1 << 4) | 5; // AP and XN
+    gdb_write_memory(stat, MPU_RASR_ADDRESS, 4, mpu_rasr_val);
     
     // enable MPU;
     // ENABLE (0) => set

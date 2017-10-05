@@ -9,11 +9,15 @@
 #include "scheduler.h"
 
 int main() {
-    //start_workers(3);
-
-    char buf[1024];
+    start_workers(3);
 
     ExecStatus * stat = launch_physical_stm32(OPENOCD, "./openocd-scripts", BIN_FILE, ELF_FILE);
+    //ExecStatus * stat = launch_virtual_stm32(QEMU_SYSTEM_ARM, BIN_FILE, ELF_FILE);
+    
+    /*char command[] = "Z4,00000000,4";
+    ppr_address_32(&command[3], GPIOE_ADDRESS);
+    printf("Command is: %s\n", command);
+    printf("Z4 returned: %s\n", gdb_transceive_rsp_packet(stat, command));*/
 
     gdb_read_registers(stat);
     for (int i=0; i<N_REGS; i++) {
