@@ -9,11 +9,11 @@
 #include "scheduler.h"
 
 int main() {
-    start_workers(3);
+    //start_workers(3);
 
     char buf[1024];
 
-    ExecStatus * stat = launch_virtual_stm32(QEMU_SYSTEM_ARM, BIN_FILE, ELF_FILE);
+    ExecStatus * stat = launch_physical_stm32(OPENOCD, "./openocd-scripts", BIN_FILE, ELF_FILE);
 
     gdb_read_registers(stat);
     for (int i=0; i<N_REGS; i++) {
@@ -47,7 +47,7 @@ int main() {
     gdb_read_registers(stat);
     printf("PC=%x\n", stat->regs[REG_PC]);
     
-    for (int i=0; i<100; i++) {
+    for (int i=0; i<10; i++) {
         printf("Skip to loop..\n");
         if (!gdb_ffwd_to_label(stat, loop_sym)) {
             FATAL("Failed to ffwd to loop");

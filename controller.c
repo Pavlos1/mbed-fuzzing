@@ -152,7 +152,7 @@ bool gdb_send_rsp_packet(ExecStatus * stat, char * command) {
  * ones.
  */
 bool gdb_ffwd_to_label(ExecStatus * stat, Elf32_Addr label) {
-    char command[] = "Z1,00000000,0";
+    char command[] = "Z1,00000000,2";
     ppr_address_32(&command[3], label);
     
     if (!gdb_send_rsp_packet(stat, command)) {

@@ -33,7 +33,7 @@ bool enable_memory_protection(ExecStatus * stat) {
         | (_handler[2] << 16) | (_handler[3] << 24);
     
     // put a breakpoint on it
-    char trap_memfault_command[] = "Z1,00000000,0";
+    char trap_memfault_command[] = "Z1,00000000,2";
     ppr_address_32(&trap_memfault_command[3], handler);
     if (!gdb_transceive_rsp_packet(stat, trap_memfault_command)) {
         WARN("Could not set up memory exception trap");

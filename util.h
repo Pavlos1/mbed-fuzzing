@@ -29,6 +29,7 @@
 #define QEMU_SYSTEM_ARM "/home/pavel/Development/mbed/qemu_stm32/arm-softmmu/qemu-system-arm"
 #define BIN_FILE "/home/pavel/workspace/comp2300-lab-1/Debug/comp2300-lab-1.bin"
 #define ELF_FILE "/home/pavel/workspace/comp2300-lab-1/Debug/comp2300-lab-1.elf"
+#define OPENOCD "/home/pavel/.eclipse/org.eclipse.platform_4.7.0_155965261_linux_gtk_x86_64/plugins/fr.ac6.mcu.externaltools.openocd.linux64_1.13.1.201703061514/tools/openocd/bin/openocd"
 
 
 /**
