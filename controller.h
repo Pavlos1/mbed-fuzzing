@@ -41,4 +41,6 @@ void gdb_write_registers(ExecStatus * stat);
 void gdb_read_memory(ExecStatus * stat, uint32_t addr, uint32_t size, uint8_t * buf);
 void gdb_write_memory(ExecStatus * stat, uint32_t addr, uint32_t size, uint8_t * buf);
 
+void gdb_write_word_memory_via_core(ExecStatus * stat, uint32_t addr, uint32_t val);
+
 #endif

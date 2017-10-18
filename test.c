@@ -9,7 +9,7 @@
 #include "scheduler.h"
 
 int main() {
-    start_workers(3);
+    //start_workers(3);
 
     ExecStatus * stat = launch_physical_stm32(OPENOCD, "./openocd-scripts", BIN_FILE, ELF_FILE);
     //ExecStatus * stat = launch_virtual_stm32(QEMU_SYSTEM_ARM, BIN_FILE, ELF_FILE);
@@ -29,12 +29,35 @@ int main() {
     
     if (gdb_send_rsp_packet(stat, "P1=42424242")) {
         DEBUG("single-register write OK");
+    } else {
+        WARN("single-register write unavailable");
     }
     
     gdb_read_registers(stat);
     for (int i=0; i<N_REGS; i++) {
         printf("r%d = %x\n", i, stat->regs[i]);
     }
+    
+    uint8_t test_memory[4];
+    gdb_read_memory(stat, 0x20000010, 4, test_memory);
+    for (int i=0; i<4; i++) {
+        if (test_memory[i] == 0x45) {
+            WARN("Byte %d has value 0x45. Coincidence?", i);
+        } else {
+            printf("Byte %d has value %d before write\n", i, test_memory[i]);
+        }
+    }
+    
+    gdb_write_word_memory_via_core(stat, 0x20000010, 0x45454545);
+    gdb_read_memory(stat, 0x20000010, 4, test_memory);
+    for (int i=0; i<4; i++) {
+        if (test_memory[i] != 0x45) {
+            WARN("Byte %d has incorrect value %d", i, test_memory[i]);
+        } else {
+            DEBUG("Byte %d OK", i);
+        }
+    }
+    
     
     Elf32_Addr main_sym = elf_lookup_symbol(stat->data, "main");
     printf("'main' at: %x\n", main_sym);

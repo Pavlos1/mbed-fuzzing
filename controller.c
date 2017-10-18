@@ -291,3 +291,57 @@ void gdb_write_memory(ExecStatus * stat, uint32_t addr, uint32_t size, uint8_t *
     free(command);
 }
 
+
+/**
+ * Executes an STR instruction on the ARM core itself
+ *
+ * This is to help with applications where the core itself, and not GDB,
+ * must perform the write. Both data and address go in registers. The
+ * STR instruction itself goes at address 0x20000000. All values are restored
+ * afterwards; the only side-effect should be the write.
+ *
+ * N.B. For obvious reasons, do NOT use this function to write
+ * to address 0x20000000 itself.
+ */
+void gdb_write_word_memory_via_core(ExecStatus * stat, uint32_t addr, uint32_t val) {
+    uint8_t old_values[4];
+    gdb_read_memory(stat, 0x20000000, 4, old_values); // we will restore these later
+    
+    uint8_t new_values[4];
+    // First two bytes are STR. Rt = r1 (val), Rn = r0 (addr), Rm = r2 (offset, =0)
+    uint16_t str_inst = 0x5081; // 0101000010000001; STR r1, [r0, r2]
+    new_values[0] = str_inst & 0xff;
+    new_values[1] = (str_inst & 0xff00) >> 8;
+    // Next two bytes are a NOP
+    new_values[2] = 0;
+    new_values[3] = 0xbf;
+    gdb_write_memory(stat, 0x20000000, 4, new_values);
+    
+    gdb_read_registers(stat); // fetch registers to be saved
+    const uint32_t old_r0 = stat->regs[0],
+                   old_r1 = stat->regs[1],
+                   old_r2 = stat->regs[2],
+                   old_pc = stat->regs[REG_PC]; // save old r0, r1, r2
+    
+    stat->regs[0] = addr; // address to write to goes in r0
+    stat->regs[1] = val; // value to write goes in r1
+    stat->regs[2] = 0; // offset goes in r2
+    stat->regs[REG_PC] = 0x20000001; // 0x20000001 because last bit is Thumb-mode switch
+    gdb_write_registers(stat);
+    
+    if (!gdb_send_rsp_packet(stat, "s")) {
+        FATAL("Could not write CPU memory via core");
+    }
+    if (!gdb_send_rsp_packet(stat, "s")) { // step again, in case the NOP got executed first
+        FATAL("Could not write CPU memory via core");
+    }
+    
+    stat->regs[0] = old_r0;
+    stat->regs[1] = old_r1;
+    stat->regs[2] = old_r2;
+    stat->regs[REG_PC] = old_pc;
+    gdb_write_registers(stat); // restore previous registers, including program counter
+    
+    gdb_write_memory(stat, 0x20000000, 4, old_values); // restore old values
+}
+
